@@ -20,6 +20,7 @@ import (
 	"github.com/ory/hydra/v2/x/events"
 	"github.com/ory/x/httprouterx"
 	"github.com/ory/x/josex"
+	"github.com/ory/x/stringslice"
 	"github.com/ory/x/stringsx"
 
 	jwtV5 "github.com/golang-jwt/jwt/v5"
@@ -1100,6 +1101,13 @@ func (h *Handler) oAuth2Authorize(w http.ResponseWriter, r *http.Request, _ http
 		return
 	}
 
+	audience := stringslice.Unique(
+		append(
+			[]string{authorizeRequest.GetClient().GetID()},
+			session.GrantedAudience...,
+		),
+	)
+
 	authorizeRequest.SetID(session.ID)
 	claims := &jwt.IDTokenClaims{
 		Subject:                             obfuscatedSubject,
@@ -1112,7 +1120,7 @@ func (h *Handler) oAuth2Authorize(w http.ResponseWriter, r *http.Request, _ http
 
 		// These are required for work around https://github.com/ory/fosite/issues/530
 		Nonce:    authorizeRequest.GetRequestForm().Get("nonce"),
-		Audience: []string{authorizeRequest.GetClient().GetID()},
+		Audience: audience,
 		IssuedAt: time.Now().Truncate(time.Second).UTC(),
 
 		// This is set by the fosite strategy
